@@ -4,7 +4,7 @@ use 5.010;
 use strict;
 use warnings;
 
-use Perinci::CmdLine 1.04;
+use Perinci::CmdLine;
 
 # VERSION
 # DATE
