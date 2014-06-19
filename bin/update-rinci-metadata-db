@@ -1,0 +1,62 @@
+#!/usr/bin/perl
+
+use 5.010;
+use strict;
+use warnings;
+
+use Perinci::CmdLine 1.04;
+
+# VERSION
+# DATE
+
+Perinci::CmdLine->new(
+    url => '/App/UpdateRinciMetadataDb/update_rinci_metadata_db',
+)->run;
+
+# ABSTRACT: Create/update Rinci metadata database
+# PODNAME: update-rinci-metadata-db
+
+=head1 SYNOPSIS
+
+Will scan all modules under C<MyApp::> recursively and record into database.
+
+ % update-rinci-metadata-db dbi:SQLite:dbname=metadata.db MyApp::
+
+For more options:
+
+ % update-rinci-metadata-db --help
+
+
+=head1 DESCRIPTION
+
+This script creates/updates database that stores L<Rinci> metadata retrieved
+from Perl modules. The created database is suitable for use by
+L<Perinci::Access::Schemeless::DBI>.
+
+
+=head1 USAGE
+
+ % update-rinci-metadata-db [opt] <DBI-DSN> <module-or-prefixes> ...
+
+
+=head1 OPTIONS
+
+=head2 --user => str
+
+DBI connection username.
+
+=head2 --password => str
+
+DBI connection password.
+
+
+=head1 TODO
+
+Allow other serialization format than L<JSON>.
+
+
+=head1 SEE ALSO
+
+L<Perinci::Access::Schemeless::DBI>
+
+=cut
