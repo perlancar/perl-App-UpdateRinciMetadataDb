@@ -32,7 +32,7 @@ $SPEC{update_rinci_metadata_db} = {
             summary => 'DBI connection DSN',
             description => <<'_',
 
-Note: has been tested with SQLite only.
+Note: has been tested with MySQL and SQLite only.
 
 _
             schema => 'str*',
@@ -103,8 +103,8 @@ sub update_rinci_metadata_db {
     my $res = SHARYANTO::SQL::Schema::create_or_update_db_schema(
         spec => {
             install => [
-                'CREATE TABLE IF NOT EXISTS module (name TEXT PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-                'CREATE TABLE IF NOT EXISTS function (module TEXT NOT NULL, name TEXT NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+                'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+                'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
             ],
         },
         dbh => $dbh,
