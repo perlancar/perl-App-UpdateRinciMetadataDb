@@ -54,6 +54,10 @@ _
             pos => 1,
             greedy => 1,
         },
+        exclude => {
+            summary => 'Perl modules to exclude',
+            schema => ['array*' => of => 'str*'],
+        },
         library => {
             summary => "Include library path, like Perl's -I",
             description => <<'_',
@@ -107,16 +111,18 @@ sub update_rinci_metadata_db {
     );
     return $res unless $res->[0] == 200;
 
+    my $exc = $args{exclude} // [];
+
     my @mods;
     for (@{ $args{module} }) {
         if (/::$/) {
             my $res = Module::List::list_modules(
                 $_, {list_modules=>1, recurse=>1});
             for (sort keys %$res) {
-                push @mods, $_ unless $_ ~~ @mods;
+                push @mods, $_ unless $_ ~~ @mods || $_ ~~ @$exc;
             }
         } else {
-            push @mods, $_ unless $_ ~~ @mods;
+            push @mods, $_ unless $_ ~~ @mods || $_ ~~ @$exc;
         }
     }
 
@@ -187,4 +193,3 @@ sub update_rinci_metadata_db {
 
 1;
 # ABSTRACT: Create/update Rinci metadata database
-
