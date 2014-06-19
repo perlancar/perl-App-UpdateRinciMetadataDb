@@ -121,12 +121,12 @@ sub update_rinci_metadata_db {
     }
 
     my $progress = $args{-progress};
-    $progress->pos(0);
-    $progress->target(~~@mods);
+    $progress->pos(0) if $progress;
+    $progress->target(~~@mods) if $progress;
     my $i = 0;
     for my $mod (@mods) {
         $i++;
-        $progress->update(pos=>$i, message => "Processing module $mod ...");
+        $progress->update(pos=>$i, message => "Processing module $mod ...") if $progress;
         $log->debug("Processing module $mod ...");
         #sleep 1;
         my $rec = $dbh->selectrow_hashref("SELECT * FROM module WHERE name=?",
@@ -159,14 +159,14 @@ sub update_rinci_metadata_db {
             my $f = $e; $f =~ s!.+/!!;
             $j++;
             $log->debug("Processing function $mod\::$f ...");
-            $progress->update(pos => $i + $j/$numf, message => "Processing function $mod\::$f ...");
+            $progress->update(pos => $i + $j/$numf, message => "Processing function $mod\::$f ...") if $progress;
             $res = $pa->request(meta => "$uri$e");
             die "Can't meta $e: $res->[0] - $res->[1]" unless $res->[0] == 200;
             $cleanser->clean_in_place(my $meta = $res->[2]);
             $dbh->do("INSERT INTO function (module, name, summary, metadata) VALUES (?,?,?,?)", {}, $mod, $f, $meta->{summary}, $json->encode($meta));
         }
     }
-    $progress->finish;
+    $progress->finish if $progress;
 
     my @deleted_mods;
     my $sth = $dbh->prepare("SELECT name FROM module");
