@@ -160,6 +160,7 @@ sub update_rinci_metadata_db {
     require Module::List;
     require Module::Path;
     require Perinci::Access::Perl;
+    require SHARYANTO::Package::Util;
     require SHARYANTO::SQL::Schema;
 
     state $json = JSON->new->allow_nonref;
@@ -203,7 +204,6 @@ sub update_rinci_metadata_db {
             # package prefix
             $log->debug("Listing all packages under $1 ...");
             for (SHARYANTO::Package::Util::list_subpackages($1, 1)) {
-                say "D:$_";
                 next if $_ ~~ @pkgs || _is_excluded($_, $exc);
                 push @pkgs, $_;
             }
@@ -214,7 +214,6 @@ sub update_rinci_metadata_db {
             push @pkgs, $pkg;
         } elsif (/(.+::)\*?\z/) {
             # module prefix
-            require Module::List;
             $log->debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
                 $1, {list_modules=>1, recurse=>1});
