@@ -85,6 +85,30 @@ _
                 lib->import($args{value});
             },
         },
+        use => {
+            schema => ['array' => of => 'str*'],
+            summary => 'Use a Perl module, a la Perl\'s -M',
+            cmdline_aliases => {M=>{}},
+            cmdline_on_getopt => sub {
+                my %args = @_;
+                my $val = $args{value};
+                if (my ($mod, $imp) = $val =~ /(.+?)=(.+)/) {
+                    load $mod;
+                    $mod->import(split /,/, $imp);
+                } else {
+                    autoload $val;
+                }
+            },
+        },
+        require => {
+            schema => ['array' => of => 'str*'],
+            summary => 'Require a Perl module, a la Perl\'s -m',
+            cmdline_aliases => {m=>{}},
+            cmdline_on_getopt => sub {
+                my %args = @_;
+                load $args{val};
+            },
+        },
         force => {
             summary => "Force update database even though module ".
                 "hasn't changed since last update",
@@ -114,9 +138,25 @@ sub update_rinci_metadata_db {
 
     my $res = SHARYANTO::SQL::Schema::create_or_update_db_schema(
         spec => {
+            latest_v => 2,
+            # v1
+            #install => [
+            #    'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+            #    'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+            #],
             install => [
-                'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-                'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+                'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+                'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
+            ],
+            upgrade_to_v2 => [
+                # rename to package
+                'DROP TABLE module',
+                'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+
+                # we'll just drop everything and rebuild, since it's painful to
+                # rename column in sqlite
+                'DROP TABLE function',
+                'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
             ],
         },
         dbh => $dbh,
@@ -125,52 +165,52 @@ sub update_rinci_metadata_db {
 
     my $exc = $args{exclude} // [];
 
-    my @mods;
+    my @pkgs;
     for (@{ $args{module_or_package} }) {
         if (/(.+::)\*?$/) {
             $log->debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
                 $1, {list_modules=>1, recurse=>1});
             for (sort keys %$res) {
-                next if $_ ~~ @mods || $_ ~~ @$exc;
+                next if $_ ~~ @pkgs || $_ ~~ @$exc;
                 $log->debug("Loading module $_ ...");
                 load $_;
-                push @mods, $_;
+                push @pkgs, $_;
             }
         } elsif (s/^\+(.+)//) {
-            next if $_ ~~ @mods || $_ ~~ @$exc;
-            # Adding package
-            push @mods, $1;
+            next if $_ ~~ @pkgs || $_ ~~ @$exc;
+            # Adding package without loading module
+            push @pkgs, $1;
         } else {
-            next if $_ ~~ @mods || $_ ~~ @$exc;
+            next if $_ ~~ @pkgs || $_ ~~ @$exc;
             $log->debug("Loading module $_ ...");
             load $_;
-            push @mods, $_;
+            push @pkgs, $_;
         }
     }
 
     my $progress = $args{-progress};
     $progress->pos(0) if $progress;
-    $progress->target(~~@mods) if $progress;
+    $progress->target(~~@pkgs) if $progress;
     my $i = 0;
-    for my $mod (@mods) {
+    for my $pkg (@pkgs) {
         $i++;
-        $progress->update(pos=>$i, message => "Processing module $mod ...") if $progress;
-        $log->debug("Processing module $mod ...");
+        $progress->update(pos=>$i, message => "Processing package $pkg ...") if $progress;
+        $log->debug("Processing package $pkg ...");
         #sleep 1;
-        my $rec = $dbh->selectrow_hashref("SELECT * FROM module WHERE name=?",
-                                          {}, $mod);
-        my $mp = Module::Path::module_path($mod);
+        my $rec = $dbh->selectrow_hashref("SELECT * FROM package WHERE name=?",
+                                          {}, $pkg);
+        my $mp = Module::Path::module_path($pkg);
         my @st = stat($mp) if $mp;
 
         unless ($args{force} || !$rec || !$rec->{mtime} || !@st || $rec->{mtime} < $st[9]) {
-            $log->debug("$mod ($mp) hasn't changed since last recorded, skipped");
+            $log->debug("$pkg ($mp) hasn't changed since last recorded, skipped");
             next;
         }
 
         next if $args{-dry_run};
 
-        my $uri = $mod; $uri =~ s!::!/!g; $uri = "pl:/$uri/";
+        my $uri = $pkg; $uri =~ s!::!/!g; $uri = "pl:/$uri/";
 
         $res = $pa->request(meta => "$uri");
         die "Can't meta $uri: $res->[0] - $res->[1]" unless $res->[0] == 200;
@@ -180,35 +220,35 @@ sub update_rinci_metadata_db {
         die "Can't list $uri: $res->[0] - $res->[1]" unless $res->[0] == 200;
         my $numf = @{ $res->[2] };
 
-        $dbh->do("INSERT INTO module (name, summary, metadata, mtime) VALUES (?,?,?,0)", {}, $mod, $pkgmeta->{summary}, $json->encode($pkgmeta), $st[9]) unless $rec;
-        $dbh->do("UPDATE module set mtime=? WHERE name=?", {}, $st[9], $mod);
-        $dbh->do("DELETE FROM function WHERE module=?", {}, $mod);
+        $dbh->do("INSERT INTO package (name, summary, metadata, mtime) VALUES (?,?,?,0)", {}, $pkg, $pkgmeta->{summary}, $json->encode($pkgmeta), $st[9]) unless $rec;
+        $dbh->do("UPDATE package set mtime=? WHERE name=?", {}, $st[9], $pkg);
+        $dbh->do("DELETE FROM function WHERE package=?", {}, $pkg);
         my $j = 0;
         for my $e (@{ $res->[2] }) {
             my $f = $e; $f =~ s!.+/!!;
             $j++;
-            $log->debug("Processing function $mod\::$f ...");
-            $progress->update(pos => $i + $j/$numf, message => "Processing function $mod\::$f ...") if $progress;
+            $log->debug("Processing function $pkg\::$f ...");
+            $progress->update(pos => $i + $j/$numf, message => "Processing function $pkg\::$f ...") if $progress;
             $res = $pa->request(meta => "$uri$e");
             die "Can't meta $e: $res->[0] - $res->[1]" unless $res->[0] == 200;
             $cleanser->clean_in_place(my $meta = $res->[2]);
-            $dbh->do("INSERT INTO function (module, name, summary, metadata) VALUES (?,?,?,?)", {}, $mod, $f, $meta->{summary}, $json->encode($meta));
+            $dbh->do("INSERT INTO function (package, name, summary, metadata) VALUES (?,?,?,?)", {}, $pkg, $f, $meta->{summary}, $json->encode($meta));
         }
     }
     $progress->finish if $progress;
 
-    my @deleted_mods;
-    my $sth = $dbh->prepare("SELECT name FROM module");
+    my @deleted_pkgs;
+    my $sth = $dbh->prepare("SELECT name FROM package");
     $sth->execute;
     while (my $row = $sth->fetchrow_hashref) {
-        next if $row->{name} ~~ @mods;
-        $log->info("Module $row->{name} no longer exists, deleting from database ...");
-        push @deleted_mods, $row->{name};
+        next if $row->{name} ~~ @pkgs;
+        $log->info("Package $row->{name} no longer exists, deleting from database ...");
+        push @deleted_pkgs, $row->{name};
     }
-    if (@deleted_mods && !$args{-dry_run}) {
-        my $in = join(",", map {$dbh->quote($_)} @deleted_mods);
-        $dbh->do("DELETE FROM function WHERE module IN ($in)");
-        $dbh->do("DELETE FROM module WHERE name IN ($in)");
+    if (@deleted_pkgs && !$args{-dry_run}) {
+        my $in = join(",", map {$dbh->quote($_)} @deleted_pkgs);
+        $dbh->do("DELETE FROM function WHERE package IN ($in)");
+        $dbh->do("DELETE FROM package WHERE name IN ($in)");
     }
 
     [200, "OK"];
