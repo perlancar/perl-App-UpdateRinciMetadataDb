@@ -66,7 +66,7 @@ _
             greedy => 1,
         },
         exclude => {
-            summary => 'Perl modules to exclude',
+            summary => 'Perl packages to exclude',
             schema => ['array*' => of => 'str*'],
         },
         library => {
@@ -109,10 +109,11 @@ _
                 load $args{val};
             },
         },
-        force => {
+        force_update => {
             summary => "Force update database even though module ".
                 "hasn't changed since last update",
             schema => 'bool',
+            cmdline_aliases => { force=>{} }, # old alias
         },
     },
     features => {
