@@ -115,6 +115,12 @@ _
             schema => 'bool',
             cmdline_aliases => { force=>{} }, # old alias
         },
+        delete => {
+            summary => "Whether to delete packages from DB if no longer ".
+                "mentioned as arguments or found in filesystem",
+            schema  => 'bool',
+            default => 1,
+        },
     },
     features => {
         progress => 1,
@@ -238,18 +244,20 @@ sub update_rinci_metadata_db {
     }
     $progress->finish if $progress;
 
-    my @deleted_pkgs;
-    my $sth = $dbh->prepare("SELECT name FROM package");
-    $sth->execute;
-    while (my $row = $sth->fetchrow_hashref) {
-        next if $row->{name} ~~ @pkgs;
-        $log->info("Package $row->{name} no longer exists, deleting from database ...");
-        push @deleted_pkgs, $row->{name};
-    }
-    if (@deleted_pkgs && !$args{-dry_run}) {
-        my $in = join(",", map {$dbh->quote($_)} @deleted_pkgs);
-        $dbh->do("DELETE FROM function WHERE package IN ($in)");
-        $dbh->do("DELETE FROM package WHERE name IN ($in)");
+    if ($args{delete} // 1) {
+        my @deleted_pkgs;
+        my $sth = $dbh->prepare("SELECT name FROM package");
+        $sth->execute;
+        while (my $row = $sth->fetchrow_hashref) {
+            next if $row->{name} ~~ @pkgs;
+            $log->info("Package $row->{name} no longer exists, deleting from database ...");
+            push @deleted_pkgs, $row->{name};
+        }
+        if (@deleted_pkgs && !$args{-dry_run}) {
+            my $in = join(",", map {$dbh->quote($_)} @deleted_pkgs);
+            $dbh->do("DELETE FROM function WHERE package IN ($in)");
+            $dbh->do("DELETE FROM package WHERE name IN ($in)");
+        }
     }
 
     [200, "OK"];
