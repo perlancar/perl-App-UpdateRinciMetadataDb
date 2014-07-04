@@ -9,7 +9,6 @@ use Log::Any '$log';
 use Data::Clean::JSON;
 use DBI;
 use JSON;
-use Module::List;
 use Module::Load qw(autoload load);
 use Module::Path;
 use Perinci::Access::Perl;
@@ -24,6 +23,18 @@ use Perinci::CmdLine;
 my $cleanser = Data::Clean::JSON->get_cleanser;
 
 our %SPEC;
+
+sub _is_excluded {
+    my ($x, $exc_list) = @_;
+    for (@$exc_list) {
+        if (/(.+)::\*?\z/) {
+            return 1 if index($x, "$1\::") == 0;
+        } else {
+            return 1 if $x eq $_;
+        }
+    }
+    0;
+}
 
 $SPEC{update_rinci_metadata_db} = {
     v => 1.1,
@@ -52,12 +63,22 @@ _
             summary => 'Perl module or prefixes or package to add/update',
             description => <<'_',
 
-For each entry, you can specify a Perl module name e.g. `Foo::Bar` (an attempt
-will be made to load that module), a module name ending with `::` or `::*` e.g.
-`Foo::Bar::*` (`Module::List` will be used to list all modules under
-`Foo::Bar::` recursively and load all those modules), or a package name using
-`+Foo::Bar` syntax (an attempt to load module with that name will *not* be made;
-can be used to add an already-loaded package e.g. by another module).
+For each entry, you can specify:
+
+* a Perl module name e.g. `Foo::Bar`. An attempt will be made to load that
+  module.
+
+* a module prefix ending with `::` or `::*` e.g. `Foo::Bar::*`. `Module::List`
+  will be used to list all modules under `Foo::Bar::` recursively and load all
+  those modules.
+
+* a package name using `+Foo::Bar` syntax. An attempt to load module with that
+  name will *not* be made. This can be used to add an already-loaded package
+  e.g. by another module).
+
+* a package prefix using `+Foo::Bar::` or `+Foo::Bar::*` syntax. Subpackages
+  will be listed recursively (using `SHARYANTO::Package::Util`'s
+  `list_subpackages`).
 
 _
             schema => ['array*' => of => 'str*'],
@@ -66,7 +87,7 @@ _
             greedy => 1,
         },
         exclude => {
-            summary => 'Perl packages to exclude',
+            summary => 'Perl package names or prefixes to exclude',
             schema => ['array*' => of => 'str*'],
         },
         library => {
@@ -93,9 +114,11 @@ _
                 my %args = @_;
                 my $val = $args{value};
                 if (my ($mod, $imp) = $val =~ /(.+?)=(.+)/) {
+                    $log->debug("Loading module $mod ...");
                     load $mod;
                     $mod->import(split /,/, $imp);
                 } else {
+                    $log->debug("Loading module $val ...");
                     autoload $val;
                 }
             },
@@ -106,7 +129,9 @@ _
             cmdline_aliases => {m=>{}},
             cmdline_on_getopt => sub {
                 my %args = @_;
-                load $args{val};
+                my $val = $args{value};
+                $log->debug("Loading module $val ...");
+                load $val;
             },
         },
         force_update => {
@@ -174,22 +199,34 @@ sub update_rinci_metadata_db {
 
     my @pkgs;
     for (@{ $args{module_or_package} }) {
-        if (/(.+::)\*?$/) {
+        if (/\A\+(.+)::\*?\z/) {
+            # package prefix
+            $log->debug("Listing all packages under $1 ...");
+            for (SHARYANTO::Package::Util::list_subpackages($1, 1)) {
+                say "D:$_";
+                next if $_ ~~ @pkgs || _is_excluded($_, $exc);
+                push @pkgs, $_;
+            }
+        } elsif (/\A\+(.+)/) {
+            # package name
+            my $pkg = $1;
+            next if $pkg ~~ @pkgs || _is_excluded($pkg, $exc);
+            push @pkgs, $pkg;
+        } elsif (/(.+::)\*?\z/) {
+            # module prefix
+            require Module::List;
             $log->debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
                 $1, {list_modules=>1, recurse=>1});
             for (sort keys %$res) {
-                next if $_ ~~ @pkgs || $_ ~~ @$exc;
+                next if $_ ~~ @pkgs || _is_excluded($_, $exc);
                 $log->debug("Loading module $_ ...");
                 load $_;
                 push @pkgs, $_;
             }
-        } elsif (s/^\+(.+)//) {
-            next if $_ ~~ @pkgs || $_ ~~ @$exc;
-            # Adding package without loading module
-            push @pkgs, $1;
         } else {
-            next if $_ ~~ @pkgs || $_ ~~ @$exc;
+            # module name
+            next if $_ ~~ @pkgs || _is_excluded($_, $exc);
             $log->debug("Loading module $_ ...");
             load $_;
             push @pkgs, $_;
