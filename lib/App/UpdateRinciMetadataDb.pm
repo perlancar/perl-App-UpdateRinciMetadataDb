@@ -10,6 +10,7 @@ use Data::Clean::JSON;
 use DBI;
 use JSON;
 use Module::List;
+use Module::Load qw(autoload load);
 use Module::Path;
 use Perinci::Access::Perl;
 use SHARYANTO::SQL::Schema;
@@ -47,8 +48,18 @@ _
             summary => 'DBI connection password',
             schema => 'str*',
         },
-        module => {
-            summary => 'Perl module or prefixes to add/update',
+        module_or_package => {
+            summary => 'Perl module or prefixes or package to add/update',
+            description => <<'_',
+
+For each entry, you can specify a Perl module name e.g. `Foo::Bar` (an attempt
+will be made to load that module), a module name ending with `::` or `::*` e.g.
+`Foo::Bar::*` (`Module::List` will be used to list all modules under
+`Foo::Bar::` recursively and load all those modules), or a package name using
+`+Foo::Bar` syntax (an attempt to load module with that name will *not* be made;
+can be used to add an already-loaded package e.g. by another module).
+
+_
             schema => ['array*' => of => 'str*'],
             req => 1,
             pos => 1,
@@ -68,6 +79,11 @@ make sure you use the right library, you can use `PERL5OPT` or explicitly use
 
 _
             cmdline_aliases => { I=>{} },
+            cmdline_on_getopt => sub {
+                my %args = @_;
+                require lib;
+                lib->import($args{value});
+            },
         },
         force => {
             summary => "Force update database even though module ".
@@ -82,10 +98,6 @@ _
 };
 sub update_rinci_metadata_db {
     my %args = @_;
-    for my $dir (@{ $args{library} // [] }) {
-        require lib;
-        lib->import($dir);
-    }
 
     require DBI;
     require JSON;
@@ -114,15 +126,26 @@ sub update_rinci_metadata_db {
     my $exc = $args{exclude} // [];
 
     my @mods;
-    for (@{ $args{module} }) {
-        if (/::$/) {
+    for (@{ $args{module_or_package} }) {
+        if (/(.+::)\*?$/) {
+            $log->debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
-                $_, {list_modules=>1, recurse=>1});
+                $1, {list_modules=>1, recurse=>1});
             for (sort keys %$res) {
-                push @mods, $_ unless $_ ~~ @mods || $_ ~~ @$exc;
+                next if $_ ~~ @mods || $_ ~~ @$exc;
+                $log->debug("Loading module $_ ...");
+                load $_;
+                push @mods, $_;
             }
+        } elsif (s/^\+(.+)//) {
+            next if $_ ~~ @mods || $_ ~~ @$exc;
+            # Adding package
+            push @mods, $1;
         } else {
-            push @mods, $_ unless $_ ~~ @mods || $_ ~~ @$exc;
+            next if $_ ~~ @mods || $_ ~~ @$exc;
+            $log->debug("Loading module $_ ...");
+            load $_;
+            push @mods, $_;
         }
     }
 
@@ -138,9 +161,9 @@ sub update_rinci_metadata_db {
         my $rec = $dbh->selectrow_hashref("SELECT * FROM module WHERE name=?",
                                           {}, $mod);
         my $mp = Module::Path::module_path($mod);
-        my @st = stat($mp);
+        my @st = stat($mp) if $mp;
 
-        unless ($args{force} || !$rec || !$rec->{mtime} || $rec->{mtime} < $st[9]) {
+        unless ($args{force} || !$rec || !$rec->{mtime} || !@st || $rec->{mtime} < $st[9]) {
             $log->debug("$mod ($mp) hasn't changed since last recorded, skipped");
             next;
         }
