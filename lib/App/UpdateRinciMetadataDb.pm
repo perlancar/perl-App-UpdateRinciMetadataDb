@@ -1,5 +1,8 @@
 package App::UpdateRinciMetadataDb;
 
+# DATE
+# VERSION
+
 use 5.010001;
 use strict;
 use warnings;
@@ -14,11 +17,7 @@ use Module::Path;
 use Perinci::Access::Perl;
 use SHARYANTO::SQL::Schema;
 
-# VERSION
-# DATE
-
 use Data::Clean::JSON;
-use Perinci::CmdLine;
 
 my $cleanser = Data::Clean::JSON->get_cleanser;
 
