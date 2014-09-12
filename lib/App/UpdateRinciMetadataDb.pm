@@ -15,7 +15,7 @@ use JSON;
 use Module::Load qw(autoload load);
 use Module::Path;
 use Perinci::Access::Perl;
-use SHARYANTO::SQL::Schema;
+use SQL::Schema::Versioned;
 
 use Data::Clean::JSON;
 
@@ -160,7 +160,7 @@ sub update_rinci_metadata_db {
     require Module::Path;
     require Perinci::Access::Perl;
     require SHARYANTO::Package::Util;
-    require SHARYANTO::SQL::Schema;
+    require SQL::Schema::Versioned;
 
     state $json = JSON->new->allow_nonref;
     state $pa = Perinci::Access::Perl->new;
@@ -168,7 +168,7 @@ sub update_rinci_metadata_db {
     my $dbh = DBI->connect($args{dsn}, $args{user}, $args{password},
                            {RaiseError=>1});
 
-    my $res = SHARYANTO::SQL::Schema::create_or_update_db_schema(
+    my $res = SQL::Schema::Versioned::create_or_update_db_schema(
         spec => {
             latest_v => 2,
             # v1
