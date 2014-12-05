@@ -76,7 +76,7 @@ For each entry, you can specify:
   e.g. by another module).
 
 * a package prefix using `+Foo::Bar::` or `+Foo::Bar::*` syntax. Subpackages
-  will be listed recursively (using `SHARYANTO::Package::Util`'s
+  will be listed recursively (using `Package::MoreUtil`'s
   `list_subpackages`).
 
 _
@@ -158,8 +158,8 @@ sub update_rinci_metadata_db {
     require JSON;
     require Module::List;
     require Module::Path;
+    require Package::MoreUtil;
     require Perinci::Access::Perl;
-    require SHARYANTO::Package::Util;
     require SQL::Schema::Versioned;
 
     state $json = JSON->new->allow_nonref;
@@ -202,7 +202,7 @@ sub update_rinci_metadata_db {
         if ($entry =~ /\A\+(.+)::\*?\z/) {
             # package prefix
             $log->debug("Listing all packages under $1 ...");
-            for (SHARYANTO::Package::Util::list_subpackages($1, 1)) {
+            for (Package::MoreUtil::list_subpackages($1, 1)) {
                 next if $_ ~~ @pkgs || _is_excluded($_, $exc);
                 push @pkgs, $_;
             }
