@@ -37,7 +37,7 @@ sub _is_excluded {
 
 $SPEC{update_rinci_metadata_db} = {
     v => 1.1,
-    summary => 'Create/update Spanel API metadata database',
+    summary => 'Create/update Rinci API metadata database',
     args => {
         dsn => {
             summary => 'DBI connection DSN',
@@ -299,4 +299,4 @@ sub update_rinci_metadata_db {
 }
 
 1;
-# ABSTRACT: Create/update Rinci metadata database
+# ABSTRACT:
