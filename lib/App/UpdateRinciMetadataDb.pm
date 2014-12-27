@@ -157,7 +157,6 @@ sub update_rinci_metadata_db {
     require DBI;
     require JSON;
     require Module::List;
-    require Module::Path;
     require Package::MoreUtil;
     require Perinci::Access::Perl;
     require SQL::Schema::Versioned;
