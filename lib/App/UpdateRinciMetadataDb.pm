@@ -13,7 +13,7 @@ use Data::Clean::JSON;
 use DBI;
 use JSON;
 use Module::Load qw(autoload load);
-use Module::Path;
+use Module::Path::More;
 use Perinci::Access::Perl;
 use SQL::Schema::Versioned;
 
@@ -242,7 +242,7 @@ sub update_rinci_metadata_db {
         #sleep 1;
         my $rec = $dbh->selectrow_hashref("SELECT * FROM package WHERE name=?",
                                           {}, $pkg);
-        my $mp = Module::Path::module_path($pkg);
+        my $mp = Module::Path::More::module_path(module=>$pkg);
         my @st = stat($mp) if $mp;
 
         unless ($args{force} || !$rec || !$rec->{mtime} || !@st || $rec->{mtime} < $st[9]) {
