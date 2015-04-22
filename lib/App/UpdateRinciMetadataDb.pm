@@ -35,6 +35,30 @@ sub _is_excluded {
     0;
 }
 
+our $db_schema_spec = {
+    latest_v => 2,
+    install => [
+        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
+    ],
+    upgrade_to_v2 => [
+        # rename to package
+        'DROP TABLE module',
+        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+
+        # we'll just drop everything and rebuild, since it's painful to
+        # rename column in sqlite
+        'DROP TABLE function',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
+    ],
+
+    # for testing
+    install_v1 => [
+        'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+    ],
+};
+
 $SPEC{update_rinci_metadata_db} = {
     v => 1.1,
     summary => 'Create/update Rinci API metadata database',
@@ -168,28 +192,7 @@ sub update_rinci_metadata_db {
                            {RaiseError=>1});
 
     my $res = SQL::Schema::Versioned::create_or_update_db_schema(
-        spec => {
-            latest_v => 2,
-            # v1
-            #install => [
-            #    'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-            #    'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
-            #],
-            install => [
-                'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-                'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
-            ],
-            upgrade_to_v2 => [
-                # rename to package
-                'DROP TABLE module',
-                'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-
-                # we'll just drop everything and rebuild, since it's painful to
-                # rename column in sqlite
-                'DROP TABLE function',
-                'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
-            ],
-        },
+        spec => $db_schema_spec,
         dbh => $dbh,
     );
     return $res unless $res->[0] == 200;
