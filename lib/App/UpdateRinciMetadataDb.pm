@@ -115,6 +115,7 @@ _
         },
         library => {
             summary => "Include library path, like Perl's -I",
+            schema => 'str*',
             description => <<'_',
 
 Note that some modules are already loaded before this option takes effect. To
