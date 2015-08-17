@@ -1,5 +1,14 @@
 Revision history for App-UpdateRinciMetadataDb
 
+0.10    2015-08-17 (PERLANCAR)
+
+        - Switch from Log::Any to Log::Any::IfLOG.
+
+        - Fix Rinci metadata.
+
+        - Add xt/author/sql_schema_versioned.t.
+
+
 0.09    2014-12-27 (PERLANCAR)
 
 	- No functional changes.
