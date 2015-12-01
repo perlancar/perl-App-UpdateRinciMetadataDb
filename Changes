@@ -1,5 +1,15 @@
 Revision history for App-rimetadb
 
+0.14    2015-12-01 (PERLANCAR)
+
+	- [Bugfix] More SQL fixes, derp.
+
+	- Dump database schema version 4->5 (also add 'mtime' column to
+	  function).
+
+	- functions: [ux] Show full function name when not in detail mode.
+
+
 0.13    2015-12-01 (PERLANCAR)
 
 	- Dump database schema version 3->4 (also add 'dist' column to
