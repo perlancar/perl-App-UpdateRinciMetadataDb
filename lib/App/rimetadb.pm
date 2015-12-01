@@ -431,7 +431,7 @@ sub update {
     if ($func) {
         my $funcsummary = $meta->{summary};
         if ($dbh->selectrow_array("SELECT name FROM function WHERE package=? AND name=?", {}, $pkg, $func)) {
-            $dbh->do("UPDATE function SET summary=?, metadata=?, mtime=?, dist=?, extra=? WHERE package=? AND function=?",
+            $dbh->do("UPDATE function SET summary=?, metadata=?, mtime=?, dist=?, extra=? WHERE package=? AND name=?",
                      {}, $funcsummary, _json->encode($meta), time(), $args{dist}, $args{extra},
                      $pkg, $func);
         } else {
