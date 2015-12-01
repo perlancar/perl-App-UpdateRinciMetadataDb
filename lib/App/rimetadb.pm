@@ -12,10 +12,13 @@ use Log::Any::IfLOG '$log';
 use Module::Load qw(autoload load);
 
 our $db_schema_spec = {
-    latest_v => 3,
+    latest_v => 4,
     install => [
         'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, dist TEXT, extra TEXT, mtime INT)',
-        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, extra TEXT, UNIQUE(package, name))',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, dist TEXT, extra TEXT, UNIQUE(package, name))',
+    ],
+    upgrade_to_v4 => [
+        'ALTER TABLE function ADD COLUMN dist TEXT',
     ],
     upgrade_to_v3 => [
         'ALTER TABLE package ADD COLUMN dist TEXT',
@@ -34,13 +37,17 @@ our $db_schema_spec = {
     ],
 
     # for testing
-    install_v1 => [
-        'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-        'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+    install_v3 => [
+        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, dist TEXT, extra TEXT, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, extra TEXT, UNIQUE(package, name))',
     ],
     install_v2 => [
         'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
         'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
+    ],
+    install_v1 => [
+        'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
     ],
 };
 
@@ -417,12 +424,12 @@ sub update {
     if ($func) {
         my $funcsummary = $meta->{summary};
         if ($dbh->selectrow_array("SELECT name FROM function WHERE package=? AND name=?", {}, $pkg, $func)) {
-            $dbh->do("UPDATE function SET summary=?, metadata=?, mtime=?, extra=? WHERE package=? AND function=?",
-                     {}, $funcsummary, _json->encode($meta), time(), $args{extra},
+            $dbh->do("UPDATE function SET summary=?, metadata=?, mtime=?, dist=?, extra=? WHERE package=? AND function=?",
+                     {}, $funcsummary, _json->encode($meta), time(), $args{dist}, $args{extra},
                      $pkg, $func);
         } else {
-            $dbh->do("INSERT INTO function (package, name, summary, metadata, extra) VALUES (?,?,?,?,?)",
-                     {}, $pkg, $func, $funcsummary, _json->encode($meta), $args{extra});
+            $dbh->do("INSERT INTO function (package, name, summary, metadata, dist, extra) VALUES (?,?,?,?,?)",
+                     {}, $pkg, $func, $funcsummary, _json->encode($meta), $args{dist}, $args{extra});
         }
     }
 
@@ -521,17 +528,17 @@ sub functions {
     my $q  = $args{query};
 
     my @rows;
-    my @columns = qw(package name summary extra);
+    my @columns = qw(package name summary dist extra);
     my @wheres;
     my @binds;
 
     if (length $q) {
-        push @wheres, "(package LIKE ? OR name LIKE ? OR extra LIKE ?)";
-        push @binds, $q, $q, $q;
+        push @wheres, "(package LIKE ? OR name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
+        push @binds, $q, $q, $q, $q;
     }
 
     my $sth = $dbh->prepare(
-        "SELECT package,name,summary,extra FROM function ORDER by package,name".
+        "SELECT package,name,summary,dist,extra FROM function ORDER by package,name".
             (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
     );
     $sth->execute(@binds);
