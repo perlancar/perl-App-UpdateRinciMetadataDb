@@ -1,4 +1,4 @@
-package App::UpdateRinciMetadataDb;
+package App::rimetadb;
 
 # DATE
 # VERSION
