@@ -1,5 +1,11 @@
 Revision history for App-rimetadb
 
+0.13    2015-12-01 (PERLANCAR)
+
+	- Dump database schema version 3->4 (also add 'dist' column to
+	  function).
+
+
 0.12    2015-12-01 (PERLANCAR)
 
         - Rename dist from App-UpdateRinciMetadataDb to App-rimetadb. Will make
