@@ -406,7 +406,7 @@ sub update {
     my $pkgsummary;
     $pkgsummary = $meta->{summary} unless $func;
     if ($dbh->selectrow_array("SELECT name FROM package WHERE name=?", {}, $pkg)) {
-        $dbh->do("UPDATE package (summary, metadata, mtime, dist, extra) VALUES (?,?,?,?,?) WHERE package=?",
+        $dbh->do("UPDATE package SET summary=?, metadata=?, mtime=?, dist=?, extra=? WHERE name=?",
                  {}, $pkgsummary, _json->encode($meta), time(), $args{dist}, $args{extra},
                  $pkg);
     } else {
@@ -417,12 +417,12 @@ sub update {
     if ($func) {
         my $funcsummary = $meta->{summary};
         if ($dbh->selectrow_array("SELECT name FROM function WHERE package=? AND name=?", {}, $pkg, $func)) {
-            $dbh->do("UPDATE function (summary, metadata, mtime, extra) VALUES (?,?,?,?) WHERE package=? AND function=?",
+            $dbh->do("UPDATE function SET summary=?, metadata=?, mtime=?, extra=? WHERE package=? AND function=?",
                      {}, $funcsummary, _json->encode($meta), time(), $args{extra},
                      $pkg, $func);
         } else {
-            $dbh->do("INSERT INTO package (package, name, summary, metadata, mtime, extra) VALUES (?,?,?,?,?,?)",
-                     {}, $pkg, $func, $funcsummary, _json->encode($meta), time(), $args{extra});
+            $dbh->do("INSERT INTO function (package, name, summary, metadata, extra) VALUES (?,?,?,?,?)",
+                     {}, $pkg, $func, $funcsummary, _json->encode($meta), $args{extra});
         }
     }
 
