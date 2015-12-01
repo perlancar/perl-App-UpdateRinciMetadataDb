@@ -547,7 +547,7 @@ sub functions {
         if ($args{detail}) {
             push @rows, $row;
         } else {
-            push @rows, $row->{name};
+            push @rows, "$row->{package}\::$row->{name}";
         }
     }
 
