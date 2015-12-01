@@ -1,0 +1,81 @@
+#!perl
+
+# DATE
+# VERSION
+
+use 5.010001;
+use strict;
+use warnings;
+
+use Perinci::CmdLine::Any;
+
+our %SPEC;
+
+my $prefix = '/App/rimetadb/';
+
+Perinci::CmdLine::Any->new(
+    url => $prefix,
+    subcommands => {
+        'update-from-modules' => {url => "${prefix}update_from_modules"},
+        update    => {url => "${prefix}update"},
+        delete    => {url => "${prefix}delete"},
+        stats     => {url => "${prefix}stats"},
+        packages  => {url => "${prefix}packages"},
+        functions => {url => "${prefix}functions"},
+    },
+    log => 1,
+)->run;
+
+# ABSTRACT:
+# PODNAME:
+
+=head1 SYNOPSIS
+
+Scan all local Perl modules in the C<MyCompany::> namespace, get all Rinci
+metadata and store them in the database (defaults to
+C<dbi:SQLite:dbname=$HOME/rimeta.db> where C<$HOME> is the user's home
+directory.
+
+ % rimetadb update-from-modules MyCompany::
+
+Ditto, except we specify custom database location (note that this is not
+recommended, you should put username/password in config file instead of
+command-line options):
+
+ % rimetadb update-from-modules MyCompany:: \
+     --dsn 'mysql:database=mycompany_rimeta' --user ... --password ...
+
+Update a single package metadata:
+
+ % rimetadb update --package MyCompany::Job \
+     --metadata-json '{"v":1.1,"summary":"Manage jobs"}'
+
+Update a single function metadata:
+
+ % rimetadb update --package MyCompany::Job --function restart_job \
+     --metadata-json '{"v":1.1,"summary":"Restart a job","args":{"id":{"summary":"Job ID","schema":"int*","req":1},"force":{"schema":"bool"}}}'
+
+Delete a single package metadata:
+
+ % rimetadb delete --package MyCompany::Job
+
+Delete a single function metadata:
+
+ % rimetadb delete --package MyCompany::Job --function restart_job
+
+Show some statistics (will be expanded further later):
+
+ % rimetadb stats
+
+Lists packages in the database:
+
+ % rimetadb packages
+ % rimetadb packages MyCompany
+
+Lists functions in the database:
+
+ % rimetadb functions
+ % rimetadb functions MyCompany
+
+
+=head1 DESCRIPTION
