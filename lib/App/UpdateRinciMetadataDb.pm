@@ -36,10 +36,15 @@ sub _is_excluded {
 }
 
 our $db_schema_spec = {
-    latest_v => 2,
+    latest_v => 3,
     install => [
-        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
-        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
+        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, dist TEXT, extra TEXT, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, extra TEXT, UNIQUE(package, name))',
+    ],
+    upgrade_to_v3 => [
+        'ALTER TABLE package ADD COLUMN dist TEXT',
+        'ALTER TABLE package ADD COLUMN extra TEXT', # a column to store random extra stuffs
+        'ALTER TABLE function ADD COLUMN extra TEXT', # a column to store random extra stuffs
     ],
     upgrade_to_v2 => [
         # rename to package
@@ -56,6 +61,10 @@ our $db_schema_spec = {
     install_v1 => [
         'CREATE TABLE IF NOT EXISTS module (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
         'CREATE TABLE IF NOT EXISTS function (module VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(module, name))',
+    ],
+    install_v2 => [
+        'CREATE TABLE IF NOT EXISTS package (name VARCHAR(255) PRIMARY KEY, summary TEXT, metadata BLOB, mtime INT)',
+        'CREATE TABLE IF NOT EXISTS function (package VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, summary TEXT, metadata BLOB, UNIQUE(package, name))',
     ],
 };
 
