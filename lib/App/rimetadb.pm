@@ -66,9 +66,14 @@ sub _connect_db {
     require DBI;
     require SQL::Schema::Versioned;
 
-    my %args = @_;
+    my $args = shift;
 
-    my $dbh = DBI->connect($args{dsn}, $args{user}, $args{password},
+    $args->{dsn} //= do {
+        $ENV{HOME} or die "HOME not defined, can't set default for dsn";
+        "dbi:SQLite:database=$ENV{HOME}/rimeta.db";
+    };
+
+    my $dbh = DBI->connect($args->{dsn}, $args->{user}, $args->{password},
                            {RaiseError=>1});
 
     my $res = SQL::Schema::Versioned::create_or_update_db_schema(
@@ -91,11 +96,13 @@ our %args_common = (
         summary => 'DBI connection DSN',
         description => <<'_',
 
+If not specified, will default to `dbd:SQLite:$HOME/rimeta.db` where `$HOME` is
+user's home directory.
+
 Note: has been tested with MySQL and SQLite only.
 
 _
         schema => 'str*',
-        req => 1,
         tags => ['common'],
     },
     user => {
@@ -250,7 +257,7 @@ sub update_from_modules {
 
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my $exc = $args{exclude} // [];
@@ -385,7 +392,7 @@ sub update {
 
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my $pkg  = $args{package};
@@ -439,7 +446,7 @@ $SPEC{delete} = {
 sub delete {
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my $pkg  = $args{package};
@@ -465,7 +472,7 @@ $SPEC{packages} = {
 sub packages {
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my $q  = $args{query};
@@ -508,7 +515,7 @@ $SPEC{functions} = {
 sub functions {
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my $q  = $args{query};
@@ -547,10 +554,11 @@ $SPEC{stats} = {
 sub stats {
     my %args = @_;
 
-    my ($res, $dbh) = _connect_db(%args);
+    my ($res, $dbh) = _connect_db(\%args);
     return $res unless $res->[0] == 200;
 
     my %stats;
+    ($stats{db_dsn}) = $args{dsn};
     ($stats{num_packages}) = $dbh->selectrow_array("SELECT COUNT(*) FROM package");
     ($stats{num_functions}) = $dbh->selectrow_array("SELECT COUNT(*) FROM function");
 
