@@ -1,6 +1,6 @@
 Revision history for App-rimetadb
 
-0.12    2015-12-01 (PERLANCAR) (unreleased)
+0.12    2015-12-01 (PERLANCAR)
 
         - Rename dist from App-UpdateRinciMetadataDb to App-rimetadb. Will make
           the app a bit more general, e.g. to be used by
