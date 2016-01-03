@@ -131,15 +131,19 @@ _
     },
 );
 
+our %args_query_detail = (
+    detail => {
+        schema => 'bool',
+        cmdline_aliases => {l=>{}},
+    },
+);
+
 our %args_query = (
     query => {
         schema => 'str*',
         pos => 0,
     },
-    detail => {
-        schema => 'bool',
-        cmdline_aliases => {l=>{}},
-    },
+    %args_query_detail,
 );
 
 sub _is_excluded {
@@ -583,6 +587,60 @@ sub stats {
     # XXX pct_arg_has_element_entity
 
     [200, "OK", \%stats];
+}
+
+$SPEC{arguments} = {
+    v => 1.1,
+    summary => 'List function arguments',
+    args => {
+        %args_common,
+        #%args_query,
+        %args_query_detail,
+    },
+};
+sub arguments {
+    my %args = @_;
+
+    my ($res, $dbh) = _connect_db(\%args);
+    return $res unless $res->[0] == 200;
+
+    #my $q  = $args{query};
+
+    my @rows;
+    #my @columns = qw(package name summary dist mtime extra);
+    my @wheres;
+    my @binds;
+
+    #if (length $q) {
+    #    push @wheres, "(package LIKE ? OR name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
+    #    push @binds, $q, $q, $q, $q;
+    #}
+
+    my $sth = $dbh->prepare(
+        "SELECT package,name,metadata FROM function".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
+    );
+    $sth->execute(@binds);
+
+    my %num_occurences;
+    while (my $row = $sth->fetchrow_hashref) {
+        my $meta = _json->decode($row->{metadata});
+        my $args = $meta->{args} // {};
+        for (keys %$args) {
+            $num_occurences{$_}++;
+        }
+    }
+
+    for (sort keys %num_occurences) {
+        push @rows, {name=>$_, num_occurences=>$num_occurences{$_}};
+    }
+
+    unless ($args{detail}) {
+        @rows = map {$_->{name}} @rows;
+    }
+
+    my @columns = qw(name num_occurences);
+    [200, "OK", \@rows, {'table.fields'=>\@columns}];
 }
 
 1;

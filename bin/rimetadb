@@ -22,6 +22,7 @@ Perinci::CmdLine::Any->new(
         stats     => {url => "${prefix}stats"},
         packages  => {url => "${prefix}packages"},
         functions => {url => "${prefix}functions"},
+        arguments => {url => "${prefix}arguments"},
     },
     log => 1,
 )->run;
@@ -70,12 +71,19 @@ Show some statistics (will be expanded further later):
 Lists packages in the database:
 
  % rimetadb packages
+ % rimetadb packages -l
  % rimetadb packages MyCompany
 
 Lists functions in the database:
 
  % rimetadb functions
+ % rimetadb functions -l
  % rimetadb functions MyCompany
+
+List function arguments in the database:
+
+ % rimetadb arguments
+ % rimetadb arguments -l
 
 
 =head1 DESCRIPTION
