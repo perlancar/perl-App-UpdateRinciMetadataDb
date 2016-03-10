@@ -65,8 +65,8 @@ sub _cleanser {
 }
 
 sub _json {
-    require JSON;
-    state $json = JSON->new->allow_nonref;
+    require JSON::MaybeXS;
+    state $json = JSON::MaybeXS->new->allow_nonref;
     $json;
 }
 
