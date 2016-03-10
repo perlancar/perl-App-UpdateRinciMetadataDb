@@ -1,5 +1,13 @@
 Revision history for App-rimetadb
 
+0.16    2016-03-10 (PERLANCAR)
+
+	- Test schema migration during release, not author testing (I
+	  practically never run tests with AUTHOR_TESTING=1).
+
+	- Replace JSON with JSON::MaybeXS.
+
+
 0.15    2016-01-03 (PERLANCAR)
 
 	- Add subcommand: arguments.
