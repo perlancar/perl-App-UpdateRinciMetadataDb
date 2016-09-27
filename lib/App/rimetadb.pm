@@ -643,6 +643,48 @@ sub arguments {
     [200, "OK", \@rows, {'table.fields'=>\@columns}];
 }
 
+$SPEC{meta} = {
+    v => 1.1,
+    summary => 'Get package/function metadata',
+    args => {
+        %args_common,
+        name => {
+            summary => '(Fully-qualified) function name or package name',
+            schema => ['perl::modname'],
+            req => 1,
+            pos => 0,
+        },
+    },
+};
+sub meta {
+    my %args = @_;
+
+    my ($res, $dbh) = _connect_db(\%args);
+    return $res unless $res->[0] == 200;
+
+    my $name = $args{name};
+
+    # try function metadata first
+    {
+        my ($package, $func) = $name =~ /(.+)::(.+)/
+            or last;
+
+        my ($row) = $dbh->selectrow_hashref(
+            "SELECT metadata FROM function WHERE package=? AND name=?", {},
+            $package, $func)
+            or last;
+
+        return [200, "OK (func meta)", $row->{metadata}];
+    }
+
+    # try package metadata
+    my ($row) = $dbh->selectrow_hashref(
+        "SELECT metadata FROM package WHERE name=?", {}, $name)
+        or return [404, "Can't find function or package with that name"];
+
+    [200, "OK (package meta)", $row->{metadata}];
+}
+
 1;
 # ABSTRACT:
 
