@@ -158,10 +158,84 @@ sub _is_excluded {
     0;
 }
 
-sub _complete_func {
+sub _complete_package {
+    require Complete::Util;
+
+    my %args = @_;
+
+    my $word = $args{word};
+
+    # only run under pericmd
+    my $cmdline = $args{cmdline} or return undef;
+    my $r = $args{r};
+
+    # allow writing Mod::SubMod as Mod/SubMod
+    my $uses_slash = $word =~ s!/!::!g ? 1:0;
+
+    # force read config file, because by default it is turned off when in
+    # completion
+    $r->{read_config} = 1;
+    my $pres = $cmdline->parse_argv($r);
+    my $pargs = $pres->[2];
+
+    my ($res, $dbh) = _connect_db($pargs);
+    return undef unless $res->[0] == 200;
+
+    my @words;
+    my $sth = $dbh->prepare("SELECT DISTINCT name FROM package ORDER BY name");
+    $sth->execute;
+    while (my $h = $sth->fetchrow_hashref) { push @words, $h->{name} }
+
+    my $compres = Complete::Util::complete_array_elem(
+        array => \@words, word => $word,
+    );
+
+    # convert back to slash if user originally typed with slash
+    if ($uses_slash) { for (@$compres) { s!::!/!g } }
+
+    $compres;
 }
 
-sub _complete_fqfunc {
+sub _complete_func {
+    require Complete::Util;
+
+    my %args = @_;
+
+    my $word = $args{word};
+
+    # only run under pericmd
+    my $cmdline = $args{cmdline} or return undef;
+    my $r = $args{r};
+
+    # force read config file, because by default it is turned off when in
+    # completion
+    $r->{read_config} = 1;
+    my $pres = $cmdline->parse_argv($r);
+    my $pargs = $pres->[2];
+
+    my ($res, $dbh) = _connect_db($pargs);
+    return undef unless $res->[0] == 200;
+
+    my @words;
+    my @wheres;
+    my @binds;
+
+    if ($pargs->{package}) {
+        push @wheres, "package=?";
+        push @binds, $pargs->{package};
+    }
+    my $sth = $dbh->prepare(
+        "SELECT DISTINCT name FROM function".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "").
+            " ORDER BY name");
+    $sth->execute(@binds);
+    while (my $h = $sth->fetchrow_hashref) { push @words, $h->{name} }
+
+    my $compres = Complete::Util::complete_array_elem(
+        array => \@words, word => $word,
+    );
+
+    $compres;
 }
 
 sub _complete_fqfunc_or_package {
@@ -205,9 +279,6 @@ sub _complete_fqfunc_or_package {
     $compres;
 }
 
-sub _complete_package {
-}
-
 $SPEC{update_from_modules} = {
     v => 1.1,
     summary => 'Update Rinci metadata database from local Perl modules',
@@ -241,20 +312,19 @@ For each entry, you can specify:
   `list_subpackages`).
 
 _
-            schema => ['array*' => of => 'str*'],
+            schema => ['array*' => of => 'perl::modname*'],
             req => 1,
             pos => 0,
             greedy => 1,
-            'x.schema.element_entity' => 'modulename',
+            element_completion => \&_complete_package,
         },
         exclude => {
             summary => 'Perl package names or prefixes to exclude',
-            schema => ['array*' => of => 'str*'],
-            'x.schema.element_entity' => 'modulename',
+            schema => ['array*' => of => 'perl::modname*'],
         },
         library => {
             summary => "Include library path, like Perl's -I",
-            schema => 'str*',
+            schema => 'dirname*',
             description => <<'_',
 
 Note that some modules are already loaded before this option takes effect. To
@@ -268,10 +338,9 @@ _
                 require lib;
                 lib->import($args{value});
             },
-            'x.schema.element_entity' => 'modulename',
         },
         use => {
-            schema => ['array' => of => 'str*'],
+            schema => ['array' => of => 'perl::modname*'],
             summary => 'Use a Perl module, a la Perl\'s -M',
             cmdline_aliases => {M=>{}},
             cmdline_on_getopt => sub {
@@ -286,10 +355,9 @@ _
                     autoload $val;
                 }
             },
-            'x.schema.element_entity' => 'modulename',
         },
         require => {
-            schema => ['array' => of => 'str*'],
+            schema => ['array' => of => 'perl::modname*'],
             summary => 'Require a Perl module, a la Perl\'s -m',
             cmdline_aliases => {m=>{}},
             cmdline_on_getopt => sub {
@@ -298,7 +366,6 @@ _
                 $log->debug("Loading module $val ...");
                 load $val;
             },
-            'x.schema.element_entity' => 'modulename',
         },
         force_update => {
             summary => "Force update database even though module ".
@@ -437,11 +504,13 @@ $SPEC{update} = {
     args => {
         %args_common,
         package => {
-            schema => 'str*',
+            schema => 'perl::modname*',
             req => 1,
+            completion => \&_complete_package,
         },
         function => {
             schema => 'str*',
+            completion => \&_complete_func,
         },
         metadata => {
             schema => 'hash*',
@@ -505,9 +574,11 @@ $SPEC{delete} = {
         package => {
             schema => 'str*',
             req => 1,
+            completion => \&_complete_package,
         },
         function => {
             schema => 'str*',
+            completion => \&_complete_func,
         },
     },
 };
