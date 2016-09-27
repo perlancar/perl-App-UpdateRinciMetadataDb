@@ -158,6 +158,56 @@ sub _is_excluded {
     0;
 }
 
+sub _complete_func {
+}
+
+sub _complete_fqfunc {
+}
+
+sub _complete_fqfunc_or_package {
+    require Complete::Util;
+
+    my %args = @_;
+
+    my $word = $args{word};
+
+    # only run under pericmd
+    my $cmdline = $args{cmdline} or return undef;
+    my $r = $args{r};
+
+    # allow writing Mod::SubMod as Mod/SubMod
+    my $uses_slash = $word =~ s!/!::!g ? 1:0;
+
+    # force read config file, because by default it is turned off when in
+    # completion
+    $r->{read_config} = 1;
+    my $pres = $cmdline->parse_argv($r);
+    my $pargs = $pres->[2];
+
+    my ($res, $dbh) = _connect_db($pargs);
+    return undef unless $res->[0] == 200;
+
+    my @words;
+    my $sth = $dbh->prepare("SELECT DISTINCT name FROM package ORDER BY name");
+    $sth->execute;
+    while (my $h = $sth->fetchrow_hashref) { push @words, $h->{name} }
+    $sth = $dbh->prepare("SELECT DISTINCT package, name FROM function ORDER BY package, name");
+    $sth->execute;
+    while (my $h = $sth->fetchrow_hashref) { push @words, "$h->{package}::$h->{name}" }
+
+    my $compres = Complete::Util::complete_array_elem(
+        array => \@words, word => $word,
+    );
+
+    # convert back to slash if user originally typed with slash
+    if ($uses_slash) { for (@$compres) { s!::!/!g } }
+
+    $compres;
+}
+
+sub _complete_package {
+}
+
 $SPEC{update_from_modules} = {
     v => 1.1,
     summary => 'Update Rinci metadata database from local Perl modules',
@@ -653,6 +703,7 @@ $SPEC{meta} = {
             schema => ['perl::modname'],
             req => 1,
             pos => 0,
+            completion => \&_complete_fqfunc_or_package,
         },
     },
 };
