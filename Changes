@@ -1,5 +1,10 @@
 Revision history for App-rimetadb
 
+0.17    2016-09-27 (PERLANCAR)
+
+	- Add subcommand: meta.
+
+
 0.16    2016-03-10 (PERLANCAR)
 
 	- Test schema migration during release, not author testing (I
