@@ -142,8 +142,25 @@ our %args_query = (
     query => {
         schema => 'str*',
         pos => 0,
+        tags => ['category:filtering'],
     },
     %args_query_detail,
+);
+
+our %args_package = (
+    package => {
+        summary => 'Select specific package only',
+        schema => 'str*', # XXX package name
+        tags => ['category:filtering'],
+    },
+);
+
+our %args_function = (
+    function => {
+        summary => 'Select specific function only',
+        schema => 'str*', # XXX function name
+        tags => ['category:filtering'],
+    },
 );
 
 sub _is_excluded {
@@ -649,6 +666,7 @@ $SPEC{functions} = {
     args => {
         %args_common,
         %args_query,
+        %args_package,
     },
 };
 sub functions {
@@ -669,6 +687,11 @@ sub functions {
         push @binds, $q, $q, $q, $q;
     }
 
+    if (defined $args{package}) {
+        push @wheres, "(package=?)";
+        push @binds, $args{package};
+    }
+
     my $sth = $dbh->prepare(
         "SELECT package,name,summary,dist,mtime,extra FROM function ORDER by package,name".
             (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
@@ -680,6 +703,77 @@ sub functions {
             push @rows, $row;
         } else {
             push @rows, "$row->{package}\::$row->{name}";
+        }
+    }
+
+    [200, "OK", \@rows, {'table.fields'=>\@columns}];
+}
+
+$SPEC{arguments} = {
+    v => 1.1,
+    summary => 'List function arguments',
+    args => {
+        %args_common,
+        %args_query,
+        %args_package,
+        %args_function,
+    },
+};
+sub arguments {
+    require Data::Sah::Util::Type;
+
+    my %args = @_;
+
+    my ($res, $dbh) = _connect_db(\%args);
+    return $res unless $res->[0] == 200;
+
+    my $q  = $args{query};
+
+    my @rows;
+    my @columns = qw(name package function summary schema schema_type req pos greedy);
+    my @wheres;
+    my @binds;
+
+    if (length $q) {
+        push @wheres, "(package LIKE ? OR name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
+        push @binds, $q, $q, $q, $q;
+    }
+
+    if (defined $args{package}) {
+        push @wheres, "(package=?)";
+        push @binds, $args{package};
+    }
+
+    if (defined $args{function}) {
+        push @wheres, "(function=?)";
+        push @binds, $args{function};
+    }
+
+    my $sth = $dbh->prepare(
+        "SELECT package,name AS function,metadata FROM function ORDER by package,name".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
+    );
+    $sth->execute(@binds);
+
+    while (my $row0 = $sth->fetchrow_hashref) {
+        my $meta = _json->decode(delete $row0->{metadata});
+        if ($meta->{args}) {
+            for my $arg (sort keys %{ $meta->{args} }) {
+                my $argspec = $meta->{args}{$arg};
+                my $row = {%$row0};
+                $row->{name} = $arg;
+                $row->{summary} = $argspec->{summary};
+                $row->{schema} = _json->encode($argspec->{schema});
+                $row->{schema_type} = Data::Sah::Util::Type::get_type($argspec->{schema});
+                $row->{req} = $argspec->{req};
+                $row->{pos} = $argspec->{pos};
+                $row->{greedy} = $argspec->{greedy};
+                if ($args{detail}) {
+                    push @rows, $row;
+                } else {
+                    push @rows, "$row->{package}\::$row->{function}\::$row->{name}";
+                }
+            }
         }
     }
 
@@ -710,16 +804,16 @@ sub stats {
     [200, "OK", \%stats];
 }
 
-$SPEC{arguments} = {
+$SPEC{argument_stats} = {
     v => 1.1,
-    summary => 'List function arguments',
+    summary => 'Show statistics on function arguments',
     args => {
         %args_common,
         #%args_query,
-        %args_query_detail,
+        #%args_query_detail,
     },
 };
-sub arguments {
+sub argument_stats {
     my %args = @_;
 
     my ($res, $dbh) = _connect_db(\%args);
@@ -756,9 +850,9 @@ sub arguments {
         push @rows, {name=>$_, num_occurences=>$num_occurences{$_}};
     }
 
-    unless ($args{detail}) {
-        @rows = map {$_->{name}} @rows;
-    }
+    #unless ($args{detail}) {
+    #    @rows = map {$_->{name}} @rows;
+    #}
 
     my @columns = qw(name num_occurences);
     [200, "OK", \@rows, {'table.fields'=>\@columns}];
