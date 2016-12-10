@@ -719,6 +719,11 @@ $SPEC{arguments} = {
         %args_query,
         %args_package,
         %args_function,
+        type => {
+            summary => 'Select arguments with specific type only',
+            schema => 'str*',
+            tags => ['category:filtering'],
+        },
     },
 };
 sub arguments {
@@ -772,6 +777,10 @@ sub arguments {
                 $row->{req} = $argspec->{req};
                 $row->{pos} = $argspec->{pos};
                 $row->{greedy} = $argspec->{greedy};
+                if (defined $args{type}) {
+                    next ARG unless defined($row->{schema_type}) &&
+                        $args{type} eq $row->{schema_type};
+                }
                 if ($args{detail}) {
                     push @rows, $row;
                 } else {
