@@ -817,13 +817,45 @@ sub stats {
     [200, "OK", \%stats];
 }
 
+$SPEC{function_stats} = {
+    v => 1.1,
+    summary => 'Show some statistics on functions',
+    args => {
+        %args_common,
+    },
+};
+sub function_stats {
+    my %args = @_;
+
+    my ($res, $dbh) = _connect_db(\%args);
+    return $res unless $res->[0] == 200;
+
+    my @rows;
+    my @columns = qw(package name num_args);
+    my @wheres;
+    my @binds;
+
+    my $sth = $dbh->prepare(
+        "SELECT package,name,metadata FROM function".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "").
+            " ORDER by package,name"
+    );
+    $sth->execute(@binds);
+
+    while (my $row = $sth->fetchrow_hashref) {
+        my $meta = _json->decode(delete $row->{metadata});
+        $row->{num_args} = keys %{ $meta->{args} // {} };
+        push @rows, $row;
+    }
+
+    [200, "OK", \@rows, {'table.fields'=>\@columns}];
+}
+
 $SPEC{argument_stats} = {
     v => 1.1,
     summary => 'Show statistics on function arguments',
     args => {
         %args_common,
-        #%args_query,
-        #%args_query_detail,
     },
 };
 sub argument_stats {

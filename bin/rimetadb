@@ -22,6 +22,7 @@ Perinci::CmdLine::Any->new(
         stats     => {url => "${prefix}stats"},
         packages  => {url => "${prefix}packages"},
         functions => {url => "${prefix}functions"},
+        'function-stats' => {url => "${prefix}function_stats"},
         arguments => {url => "${prefix}arguments"},
         'argument-stats' => {url => "${prefix}argument_stats"},
         meta      => {url => "${prefix}meta"},
