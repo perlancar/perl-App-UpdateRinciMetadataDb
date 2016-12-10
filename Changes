@@ -1,5 +1,12 @@
 Revision history for App-rimetadb
 
+0.19    2016-12-10 (PERLANCAR)
+
+        - Make subcommand 'arguments' show more details about each function
+          argument. Add subcommand 'argument-stats' that just shows the number
+          of occurrences for each argument.
+
+
 0.18    2016-09-27 (PERLANCAR)
 
 	- Add tab completion.
