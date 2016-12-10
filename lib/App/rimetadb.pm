@@ -640,12 +640,13 @@ sub packages {
 
     if (length $q) {
         push @wheres, "(name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
-        push @binds, $q, $q, $q;
+        push @binds, "%$q%", "%$q%", "%$q%";
     }
 
     my $sth = $dbh->prepare(
-        "SELECT name,summary,dist,mtime,extra FROM package ORDER by name".
-            (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
+        "SELECT name,summary,dist,mtime,extra FROM package".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "").
+            " ORDER by name"
     );
     $sth->execute(@binds);
 
@@ -684,7 +685,7 @@ sub functions {
 
     if (length $q) {
         push @wheres, "(package LIKE ? OR name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
-        push @binds, $q, $q, $q, $q;
+        push @binds, "%$q%", "%$q%", "%$q%", "%$q%";
     }
 
     if (defined $args{package}) {
@@ -693,8 +694,9 @@ sub functions {
     }
 
     my $sth = $dbh->prepare(
-        "SELECT package,name,summary,dist,mtime,extra FROM function ORDER by package,name".
-            (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
+        "SELECT package,name,summary,dist,mtime,extra FROM function".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "").
+            " ORDER by package,name"
     );
     $sth->execute(@binds);
 
@@ -736,7 +738,7 @@ sub arguments {
 
     if (length $q) {
         push @wheres, "(package LIKE ? OR name LIKE ? OR dist LIKE ? OR extra LIKE ?)";
-        push @binds, $q, $q, $q, $q;
+        push @binds, "%$q%", "%$q%", "%$q%", "%$q%";
     }
 
     if (defined $args{package}) {
@@ -750,14 +752,16 @@ sub arguments {
     }
 
     my $sth = $dbh->prepare(
-        "SELECT package,name AS function,metadata FROM function ORDER by package,name".
-            (@wheres ? " WHERE ".join(" AND ", @wheres) : "")
+        "SELECT package,name AS function,metadata FROM function".
+            (@wheres ? " WHERE ".join(" AND ", @wheres) : "").
+            " ORDER by package,name"
     );
     $sth->execute(@binds);
 
     while (my $row0 = $sth->fetchrow_hashref) {
         my $meta = _json->decode(delete $row0->{metadata});
         if ($meta->{args}) {
+          ARG:
             for my $arg (sort keys %{ $meta->{args} }) {
                 my $argspec = $meta->{args}{$arg};
                 my $row = {%$row0};
