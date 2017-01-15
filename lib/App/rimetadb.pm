@@ -150,7 +150,7 @@ our %args_query = (
 our %args_package = (
     package => {
         summary => 'Select specific package only',
-        schema => 'str*', # XXX package name
+        schema => 'perl::modname*',
         tags => ['category:filtering'],
     },
 );
@@ -589,7 +589,7 @@ $SPEC{delete} = {
     args => {
         %args_common,
         package => {
-            schema => 'str*',
+            schema => 'perl::modname*',
             req => 1,
             completion => \&_complete_package,
         },
