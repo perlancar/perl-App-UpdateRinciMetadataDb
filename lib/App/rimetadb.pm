@@ -325,7 +325,7 @@ For each entry, you can specify:
   e.g. by another module).
 
 * a package prefix using `+Foo::Bar::` or `+Foo::Bar::*` syntax. Subpackages
-  will be listed recursively (using `Package::MoreUtil`'s
+  will be listed recursively (using <pm:Package::Util::Lite>'s
   `list_subpackages`).
 
 _
@@ -405,7 +405,7 @@ _
 sub update_from_modules {
     require Module::List;
     require Module::Path::More;
-    require Package::MoreUtil;
+    require Package::Util::Lite;
 
     my %args = @_;
 
@@ -419,7 +419,7 @@ sub update_from_modules {
         if ($entry =~ /\A\+(.+)::\*?\z/) {
             # package prefix
             log_debug("Listing all packages under $1 ...");
-            for (Package::MoreUtil::list_subpackages($1, 1)) {
+            for (Package::Util::Lite::list_subpackages($1, 1)) {
                 next if $_ ~~ @pkgs || _is_excluded($_, $exc);
                 push @pkgs, $_;
             }
