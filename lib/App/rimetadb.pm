@@ -460,7 +460,7 @@ sub update_from_modules {
         my $rec = $dbh->selectrow_hashref("SELECT * FROM package WHERE name=?",
                                           {}, $pkg);
         my $mp = Module::Path::More::module_path(module=>$pkg);
-        my @st = stat($mp) if $mp;
+        my @st; @st = stat($mp) if $mp;
 
         unless ($args{force} || !$rec || !$rec->{mtime} || !@st || $rec->{mtime} < $st[9]) {
             log_debug("$pkg ($mp) hasn't changed since last recorded, skipped");
