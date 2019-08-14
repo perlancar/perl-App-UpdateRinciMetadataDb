@@ -304,6 +304,14 @@ $SPEC{update_from_modules} = {
 This routine scans Perl modules, load them, and update the database using Rinci
 metadata from each modules into the database.
 
+For each package, function, or function argument metadata, you can put this
+attribute:
+
+    'x.app.rimetadb.exclude' => 1,
+
+to exclude the entity from being imported into the database. When you exclude a
+package, all its contents (currently functions) are also excluded.
+
 _
     args => {
         %args_common,
@@ -338,6 +346,16 @@ _
         exclude => {
             summary => 'Perl package names or prefixes to exclude',
             schema => ['array*' => of => 'perl::modname*'],
+            description => <<'_',
+
+You can also use this attribute in your package metadata:
+
+    'x.app.rimetadb.exclude' => 1,
+
+to exclude the package (as well as its contents: all functions) from being
+imported into the database.
+
+_
         },
         library => {
             summary => "Include library path, like Perl's -I",
@@ -452,6 +470,7 @@ sub update_from_modules {
     $progress->pos(0) if $progress;
     $progress->target(~~@pkgs) if $progress;
     my $i = 0;
+  PKG:
     for my $pkg (@pkgs) {
         $i++;
         $progress->update(pos=>$i, message => "Processing package $pkg ...") if $progress;
@@ -475,6 +494,17 @@ sub update_from_modules {
         die "Can't meta $uri: $res->[0] - $res->[1]" unless $res->[0] == 200;
         _cleanser->clean_in_place(my $pkgmeta = $res->[2]);
 
+        if ($pkgmeta->{'x.app.rimetadb.exclude'}) {
+            log_debug("Package $pkg has x.app.rimetadb.exclude set to true, excluding ...");
+            @pkgs = grep { $_ ne $pkg } @pkgs;
+            if ($rec) {
+                log_debug("Deleting package $pkg from the database ...");
+                $dbh->do("DELETE FROM package  WHERE name=?"   , {}, $pkg);
+                $dbh->do("DELETE FROM function WHERE package=?", {}, $pkg);
+            }
+            next PKG;
+        }
+
         $res = _pa->request(list => $uri, {type=>'function'});
         die "Can't list $uri: $res->[0] - $res->[1]" unless $res->[0] == 200;
         my $numf = @{ $res->[2] };
@@ -483,15 +513,30 @@ sub update_from_modules {
         $dbh->do("UPDATE package set mtime=? WHERE name=?", {}, $st[9], $pkg);
         $dbh->do("DELETE FROM function WHERE package=?", {}, $pkg);
         my $j = 0;
+      FUNC:
         for my $e (@{ $res->[2] }) {
-            my $f = $e; $f =~ s!.+/!!;
+            my $func = $e; $func =~ s!.+/!!;
             $j++;
-            log_debug("Processing function $pkg\::$f ...");
-            $progress->update(pos => $i + $j/$numf, message => "Processing function $pkg\::$f ...") if $progress;
+            log_debug("Processing function $pkg\::$func ...");
+            $progress->update(pos => $i + $j/$numf, message => "Processing function $pkg\::$func ...") if $progress;
             $res = _pa->request(meta => "$uri$e");
             die "Can't meta $e: $res->[0] - $res->[1]" unless $res->[0] == 200;
-            _cleanser->clean_in_place(my $meta = $res->[2]);
-            $dbh->do("INSERT INTO function (package, name, summary, metadata) VALUES (?,?,?,?)", {}, $pkg, $f, $meta->{summary}, _json->encode($meta));
+            _cleanser->clean_in_place(my $funcmeta = $res->[2]);
+
+            if ($funcmeta->{'x.app.rimetadb.exclude'}) {
+                log_debug("Function $pkg\::$func has x.app.rimetadb.exclude set to true, excluding ...");
+                next FUNC;
+            }
+
+            for my $argname (sort keys %{ $funcmeta->{args} // {} }) {
+                my $argspec = $funcmeta->{args}{$argname};
+                if ($argspec->{'x.app.rimetadb.exclude'}) {
+                    log_debug("Function argument $argname (of function $pkg\::$func) has x.app.rimetadb.exclude set to true, excluding ...");
+                    delete $funcmeta->{args}{$argname};
+                }
+            }
+
+            $dbh->do("INSERT INTO function (package, name, summary, metadata) VALUES (?,?,?,?)", {}, $pkg, $func, $funcmeta->{summary}, _json->encode($funcmeta));
         }
     }
     $progress->finish if $progress;
