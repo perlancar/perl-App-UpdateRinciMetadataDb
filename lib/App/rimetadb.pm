@@ -865,6 +865,9 @@ sub arguments {
 $SPEC{stats} = {
     v => 1.1,
     summary => 'Show some statistics from the database',
+    args => {
+        %args_common,
+    },
 };
 sub stats {
     my %args = @_;
