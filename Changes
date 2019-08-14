@@ -1,3 +1,16 @@
+0.221   2019-08-14  Released-By: PERLANCAR; Urgency: medium
+
+	- [new] Observe x.app.rimetadb.exclude property.
+
+	- [incompatible change] Only use Foo:: as prefix notation, no longer
+          accept Foo::*.
+
+	- [bugfix] update-from-modules: When deleting packages from
+	  database, only delete those specified in module_or_package.
+
+	- [ux] Tweak summaries to make them clearer.
+
+
 0.220   2019-01-06  Released-By: PERLANCAR
 
 	- No functional changes.
