@@ -324,17 +324,16 @@ For each entry, you can specify:
 * a Perl module name e.g. `Foo::Bar`. An attempt will be made to load that
   module.
 
-* a module prefix ending with `::` or `::*` e.g. `Foo::Bar::*`. `Module::List`
-  will be used to list all modules under `Foo::Bar::` recursively and load all
-  those modules.
+* a module prefix ending with `::` e.g. `Foo::Bar::`. `Module::List` will be
+  used to list all modules under `Foo::Bar::` recursively and load all those
+  modules.
 
 * a package name using `+Foo::Bar` syntax. An attempt to load module with that
   name will *not* be made. This can be used to add an already-loaded package
   e.g. by another module).
 
-* a package prefix using `+Foo::Bar::` or `+Foo::Bar::*` syntax. Subpackages
-  will be listed recursively (using <pm:Package::Util::Lite>'s
-  `list_subpackages`).
+* a package prefix using `+Foo::Bar::` or `+Foo::Bar::` syntax. Subpackages will
+  be listed recursively (using <pm:Package::Util::Lite>'s `list_subpackages`).
 
 _
             schema => ['array*' => of => 'perl::modname*'],
@@ -345,7 +344,7 @@ _
         },
         exclude => {
             summary => 'Perl package names or prefixes to exclude',
-            schema => ['array*' => of => 'perl::modname*'],
+            schema => ['array*' => of => 'perl::modname_or_prefix*'],
             description => <<'_',
 
 You can also use this attribute in your package metadata:
@@ -434,7 +433,7 @@ sub update_from_modules {
 
     my @pkgs;
     for my $entry (@{ $args{module_or_package} }) {
-        if ($entry =~ /\A\+(.+)::\*?\z/) {
+        if ($entry =~ /\A\+(.+)::\z/) {
             # package prefix
             log_debug("Listing all packages under $1 ...");
             for (Package::Util::Lite::list_subpackages($1, 1)) {
@@ -446,7 +445,7 @@ sub update_from_modules {
             my $pkg = $1;
             next if $pkg ~~ @pkgs || _is_excluded($pkg, $exc);
             push @pkgs, $pkg;
-        } elsif ($entry =~ /(.+::)\*?\z/) {
+        } elsif ($entry =~ /(.+::)?\z/) {
             # module prefix
             log_debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
