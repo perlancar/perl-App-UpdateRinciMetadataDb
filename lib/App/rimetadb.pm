@@ -517,7 +517,13 @@ sub update_from_modules {
 
 $SPEC{update} = {
     v => 1.1,
-    summary => 'Add/update a package or function metadata',
+    summary => 'Add/update a package or function metadata in the database',
+    description => <<'_',
+
+This routine lets you add/update a package or function metadata in the database
+with the specified metadata.
+
+_
     args => {
         %args_common,
         package => {
@@ -585,7 +591,7 @@ sub update {
 
 $SPEC{delete} = {
     v => 1.1,
-    summary => 'Delete a package or function metadata',
+    summary => 'Delete a package or function metadata from the database',
     args => {
         %args_common,
         package => {
@@ -619,7 +625,7 @@ sub delete {
 
 $SPEC{packages} = {
     v => 1.1,
-    summary => 'List packages',
+    summary => 'List packages in the database',
     args => {
         %args_common,
         %args_query,
@@ -663,7 +669,7 @@ sub packages {
 
 $SPEC{functions} = {
     v => 1.1,
-    summary => 'List functions',
+    summary => 'List functions in the database',
     args => {
         %args_common,
         %args_query,
@@ -713,7 +719,7 @@ sub functions {
 
 $SPEC{arguments} = {
     v => 1.1,
-    summary => 'List function arguments',
+    summary => 'List function arguments in the database',
     args => {
         %args_common,
         %args_query,
@@ -795,7 +801,7 @@ sub arguments {
 
 $SPEC{stats} = {
     v => 1.1,
-    summary => 'Show some statistics',
+    summary => 'Show some statistics from the database',
 };
 sub stats {
     my %args = @_;
@@ -819,7 +825,7 @@ sub stats {
 
 $SPEC{function_stats} = {
     v => 1.1,
-    summary => 'Show some statistics on functions',
+    summary => 'Show some statistics on functions from the database',
     args => {
         %args_common,
     },
@@ -853,7 +859,7 @@ sub function_stats {
 
 $SPEC{argument_stats} = {
     v => 1.1,
-    summary => 'Show statistics on function arguments',
+    summary => 'Show statistics on function arguments from the database',
     args => {
         %args_common,
     },
@@ -905,7 +911,7 @@ sub argument_stats {
 
 $SPEC{meta} = {
     v => 1.1,
-    summary => 'Get package/function metadata',
+    summary => 'Get package/function metadata from the database',
     args => {
         %args_common,
         name => {
