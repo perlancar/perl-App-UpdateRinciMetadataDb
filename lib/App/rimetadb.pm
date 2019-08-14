@@ -175,6 +175,22 @@ sub _is_excluded {
     0;
 }
 
+sub _package_in_list_of_modnames_or_prefixes {
+    my ($pkg, $list) = @_;
+    #log_debug "Checking if package %s is in list %s", $pkg, $list;
+    my $res = 0;
+    for (@$list) {
+        if (/(.+)::\z/) {
+            my $pkg_part = $1;
+            do { $res++; last } if $pkg =~ /\A\Q$pkg_part\E(?::|\z)/;
+        } else {
+            do { $res++; last } if $pkg eq $_;
+        }
+    }
+    #log_debug "  result: $res";
+    $res;
+}
+
 sub _complete_package {
     require Complete::Util;
 
@@ -336,7 +352,7 @@ For each entry, you can specify:
   be listed recursively (using <pm:Package::Util::Lite>'s `list_subpackages`).
 
 _
-            schema => ['array*' => of => 'perl::modname*'],
+            schema => ['array*' => of => 'perl::modname_or_prefix*'],
             req => 1,
             pos => 0,
             greedy => 1,
@@ -445,7 +461,7 @@ sub update_from_modules {
             my $pkg = $1;
             next if $pkg ~~ @pkgs || _is_excluded($pkg, $exc);
             push @pkgs, $pkg;
-        } elsif ($entry =~ /(.+::)?\z/) {
+        } elsif ($entry =~ /(.+::)\z/) {
             # module prefix
             log_debug("Listing all modules under $1 ...");
             my $res = Module::List::list_modules(
@@ -465,6 +481,7 @@ sub update_from_modules {
         }
     }
 
+    my @excluded_pkgs;
     my $progress = $args{-progress};
     $progress->pos(0) if $progress;
     $progress->target(~~@pkgs) if $progress;
@@ -495,7 +512,7 @@ sub update_from_modules {
 
         if ($pkgmeta->{'x.app.rimetadb.exclude'}) {
             log_debug("Package $pkg has x.app.rimetadb.exclude set to true, excluding ...");
-            @pkgs = grep { $_ ne $pkg } @pkgs;
+            push @excluded_pkgs, $pkg;
             if ($rec) {
                 log_debug("Deleting package $pkg from the database ...");
                 $dbh->do("DELETE FROM package  WHERE name=?"   , {}, $pkg);
@@ -540,11 +557,14 @@ sub update_from_modules {
     }
     $progress->finish if $progress;
 
+    @pkgs = grep { !($_ ~~ @excluded_pkgs) } @pkgs;
+
     if ($args{delete} // 1) {
         my @deleted_pkgs;
         my $sth = $dbh->prepare("SELECT name FROM package");
         $sth->execute;
         while (my $row = $sth->fetchrow_hashref) {
+            next unless _package_in_list_of_modnames_or_prefixes($row->{name}, $args{module_or_package});
             next if $row->{name} ~~ @pkgs;
             log_info("Package $row->{name} no longer exists, deleting from database ...");
             push @deleted_pkgs, $row->{name};
