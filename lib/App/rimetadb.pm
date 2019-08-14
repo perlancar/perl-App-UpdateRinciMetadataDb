@@ -180,9 +180,8 @@ sub _package_in_list_of_modnames_or_prefixes {
     #log_debug "Checking if package %s is in list %s", $pkg, $list;
     my $res = 0;
     for (@$list) {
-        if (/(.+)::\z/) {
-            my $pkg_part = $1;
-            do { $res++; last } if $pkg =~ /\A\Q$pkg_part\E(?::|\z)/;
+        if (/::\z/) {
+            do { $res++; last } if $pkg =~ /\A\Q$_\E/;
         } else {
             do { $res++; last } if $pkg eq $_;
         }
