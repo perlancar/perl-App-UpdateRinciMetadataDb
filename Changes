@@ -1,3 +1,8 @@
+0.222   2019-08-14  Released-By: PERLANCAR; Urgency: medium
+
+	- [bugfix] stats: did not include common options like --dsn.
+
+
 0.221   2019-08-14  Released-By: PERLANCAR; Urgency: medium
 
 	- [new] Observe x.app.rimetadb.exclude property.
