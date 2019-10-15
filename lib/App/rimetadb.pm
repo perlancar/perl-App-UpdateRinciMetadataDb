@@ -59,8 +59,8 @@ our $db_schema_spec = {
 };
 
 sub _cleanser {
-    require Data::Clean::JSON;
-    state $cleanser = Data::Clean::JSON->get_cleanser;
+    require Data::Clean::ForJSON;
+    state $cleanser = Data::Clean::ForJSON->get_cleanser;
     $cleanser;
 }
 
