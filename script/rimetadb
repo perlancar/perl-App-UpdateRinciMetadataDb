@@ -94,3 +94,24 @@ Get metadata of function/package:
 
 
 =head1 DESCRIPTION
+
+This script (and backend Perl module, L<App::rimetadb>) maintains a database
+that catalogs Rinci metadata. The metadata can be used for various purposes:
+
+=over
+
+=item * Statistics
+
+Average number of functions in a package. Average number of arguments in a
+function. Most often used schema data types for arguments. And so on.
+
+=item * Allow access to Perl functions via HTTP
+
+See L<Perinci::Access::HTTP::Server> and L<Riap>.
+
+=item * Documentation
+
+=back
+
+You can add Rinci metadata from installed Perl modules, or manually by
+specifying JSON or data structure via CLI or Perl API.
