@@ -1,3 +1,12 @@
+0.223   2019-11-25  Released-By: PERLANCAR; Urgency: low
+
+        - No functional changes.
+
+	- [doc] Add rationale.
+
+        - [doc] Fix grammar.
+
+
 0.222   2019-08-14  Released-By: PERLANCAR; Urgency: medium
 
 	- [bugfix] stats: did not include common options like --dsn.
