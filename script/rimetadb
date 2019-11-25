@@ -71,13 +71,13 @@ Show some statistics (will be expanded further later):
 
  % rimetadb stats
 
-Lists packages in the database:
+List packages in the database:
 
  % rimetadb packages
  % rimetadb packages -l
  % rimetadb packages MyCompany
 
-Lists functions in the database:
+List functions in the database:
 
  % rimetadb functions
  % rimetadb functions -l
