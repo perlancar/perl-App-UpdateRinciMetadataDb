@@ -2,3 +2,4 @@ App-rimetadb-*
 .build
 *~
 nytprof*
+.DS_Store
